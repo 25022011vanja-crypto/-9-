@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Симуляция 200 бросков кубика</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 0 20px;
+            background-color: #f4f4f9;
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+        }
+        button {
+            display: block;
+            margin: 20px auto;
+            padding: 12px 24px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .results {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 30px;
+        }
+        table {
+            border-collapse: collapse;
+            width: 300px;
+            background-color: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: center;
+        }
+        th {
+            background-color: #34495e;
+            color: white;
+        }
+        .chart-container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        canvas {
+            max-width: 100%;
+            height: auto;
+        }
+        .loading {
+            text-align: center;
+            font-size: 18px;
+            color: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Симуляция 200 бросков игрального кубика</h1>
+    <button id="rollBtn">Запустить симуляцию</button>
+    
+    <div class="results" id="resultsArea" style="display: none;">
+        <div class="loading" id="loadingText"></div>
+        <table id="statsTable">
+            <thead>
+                <tr>
+                    <th>Очки</th>
+                    <th>Количество</th>
+                    <th>Вероятность</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Строки заполнит скрипт -->
+            </tbody>
+        </table>
+        <div class="chart-container">
+            <canvas id="diceChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Подключаем Chart.js для диаграммы -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script>
+        const rollBtn = document.getElementById('rollBtn');
+        const resultsArea = document.getElementById('resultsArea');
+        const statsTableBody = document.querySelector('#statsTable tbody');
+        const loadingText = document.getElementById('loadingText');
+        const ctx = document.getElementById('diceChart').getContext('2d');
+        let chartInstance = null;
+
+        // Функция для форматирования процентов
+        function formatPercent(value) {
+            return (value * 100).toFixed(2) + '%';
+        }
+
+        // Функция очистки предыдущих результатов
+        function clearResults() {
+            statsTableBody.innerHTML = '';
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+            resultsArea.style.display = 'none';
+        }
+
+        // Основная функция симуляции
+        function simulateRolls() {
+            clearResults();
+            resultsArea.style.display = 'flex';
+            loadingText.textContent = 'Бросаем кубик 200 раз...';
+
+            // Массив для подсчета выпадений (индексы 1-6, 0 не используем)
+            const counts = [0, 0, 0, 0, 0, 0, 0]; 
+            const totalRolls = 200;
+
+            // Имитация бросков
+            for (let i = 0; i < totalRolls; i++) {
+                const roll = Math.floor(Math.random() * 6) + 1;
+                counts[roll]++;
+            }
+
+            // Небольшая задержка для визуального эффекта завершения
+            setTimeout(() => {
+                loadingText.style.display = 'none';
+                
+                // Заполнение таблицы
+                let theoreticalProb = (1 / 6);
+                for (let i = 1; i <= 6; i++) {
+                    const count = counts[i];
+                    const empiricalProb = count / totalRolls;
+                    
+                    const row = document.createElement('tr');
+                    
+                    const cellDice = document.createElement('td');
+                    cellDice.textContent = i;
+                    
+                    const cellCount = document.createElement('td');
+                    cellCount.textContent = count;
+                    
+                    const cellProb = document.createElement('td');
+                    cellProb.textContent = formatPercent(empiricalProb);
+                    
+                    // Подсветка аномалий: если разница с теорией больше 15%
+                    if (Math.abs(empiricalProb - theoreticalProb) > 0.15) {
+                        row.style.backgroundColor = '#fadbd8'; /* Легкий красный */
+                    }
+
+                    row.appendChild(cellDice);
+                    row.appendChild(cellCount);
+                    row.appendChild(cellProb);
+                    statsTableBody.appendChild(row);
+                }
+
+                // Построение диаграммы
+                const labels = ['1', '2', '3', '4', '5', '6'];
+                const data = counts.slice(1, 7); // берем значения с 1 по 6 индекс
+
+                chartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Количество выпадений',
+                            data: data,
+                            backgroundColor: [
+                                'rgba(255, 99, 132, 0.7)',
+                                'rgba(54, 162, 235, 0.7)',
+                                'rgba(255, 206, 86, 0.7)',
+                                'rgba(75, 192, 192, 0.7)',
+                                'rgba(153, 102, 255, 0.7)',
+                                'rgba(255, 159, 64, 0.7)'
+                            ],
+                            borderColor: [
+                                'rgba(255, 99, 132, 1)',
+                                'rgba(54, 162, 235, 1)',
+                                'rgba(255, 206, 86, 1)',
+                                'rgba(75, 192, 192, 1)',
+                                'rgba(153, 102, 255, 1)',
+                                'rgba(255, 159, 64, 1)'
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { display: false },
+                            title: {
+                                display: true,
+                                text: 'Распределение результатов (200 бросков)'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 60,
+                                ticks: {
+                                    stepSize: 10
+                                }
+                            }
+                        }
+                    }
+                });
+            }, 500);
+        }
+
+        rollBtn.addEventListener('click', simulateRolls);
+    </script>
+</body>
+</html>
